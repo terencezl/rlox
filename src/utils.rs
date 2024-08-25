@@ -12,11 +12,15 @@ fn concat_str<'a>(s1: &'a str, s2: &'a str) -> Option<&'a str> {
     }
 }
 
-pub fn concat_contiguous_strs<'a, 'b>(slices: &'b [&'a str]) -> Option<&'a str> {
+fn concat_contiguous_strs<'a, 'b>(slices: &'b [&'a str]) -> Option<&'a str> {
     match slices.first() {
         None => Some(""),
         Some(&first) => slices[1..]
             .iter()
             .try_fold(first, |acc, &slice| concat_str(acc, slice)),
     }
+}
+
+pub fn take_slice<'a, 'b>(source: &'b [&'a str], start: usize, end: usize) -> &'a str {
+    concat_contiguous_strs(&source[start..end]).unwrap()
 }

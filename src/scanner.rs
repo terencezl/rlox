@@ -1,6 +1,6 @@
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType;
-use crate::utils::concat_contiguous_strs;
+use crate::utils::take_slice;
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -125,6 +125,16 @@ impl<'a> Scanner<'a> {
         Some(c)
     }
 
+    fn advance_while(&mut self, predicate: fn(&str) -> bool) {
+        while let Some(c) = self.peek() {
+            if !predicate(c) {
+                break;
+            }
+            // will never be None
+            self.advance();
+        }
+    }
+
     fn peek_next(&self) -> Option<&str> {
         let c = self.source.get(self.current + 1)?;
         Some(c)
@@ -135,10 +145,9 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token_with_literal(&mut self, r#type: TokenType, literal: Option<Literal<'a>>) {
-        let text = &self.source[self.start..self.current];
         self.tokens.push(Token::new(
             r#type,
-            concat_contiguous_strs(text).unwrap(),
+            take_slice(&self.source, self.start, self.current),
             literal,
             self.line,
         ));
@@ -165,21 +174,13 @@ impl<'a> Scanner<'a> {
         // will never be None
         self.advance();
 
-        let literal = Literal::String(
-            concat_contiguous_strs(&self.source[self.start + 1..self.current - 1]).unwrap(),
-        );
+        let literal = Literal::String(take_slice(&self.source, self.start + 1, self.current - 1));
         self.add_token_with_literal(TokenType::STRING, Some(literal));
         Some(())
     }
 
     fn slash_slash_comment(&mut self) {
-        while let Some(c) = self.peek() {
-            if c == "\n" {
-                break;
-            }
-            // will never be None
-            self.advance();
-        }
+        self.advance_while(|c| c != "\n");
     }
 
     fn slash_star_comment(&mut self) -> Option<()> {
@@ -214,34 +215,19 @@ impl<'a> Scanner<'a> {
     }
 
     fn number(&mut self) {
-        while let Some(c) = self.peek() {
-            if !is_digit(c) {
-                break;
-            }
-            // will never be None
-            self.advance();
-        }
+        self.advance_while(is_digit);
 
         // look for a fractional part
-        let next_is_digit = self
-            .peek_next()
-            .map_or(false, |next_char| is_digit(next_char));
+        let next_is_digit = self.peek_next().is_some_and(is_digit);
         if self.peek() == Some(".") && next_is_digit {
             // consume the "."
             // will never be None
             self.advance();
-            while let Some(c) = self.peek() {
-                if !is_digit(c) {
-                    break;
-                }
-                // will never be None
-                self.advance();
-            }
+            self.advance_while(is_digit);
         }
 
         let literal = Literal::Number(
-            self.source[self.start..self.current]
-                .concat()
+            take_slice(&self.source, self.start, self.current)
                 .parse::<f64>()
                 .unwrap(),
         );
@@ -249,16 +235,10 @@ impl<'a> Scanner<'a> {
     }
 
     fn identifier(&mut self) {
-        while let Some(c) = self.peek() {
-            if !is_alphanumeric(c) {
-                break;
-            }
-            // will never be None
-            self.advance();
-        }
+        self.advance_while(is_alphanumeric);
 
-        let text = self.source[self.start..self.current].concat();
-        let token_type = match text.as_str() {
+        let text = take_slice(&self.source, self.start, self.current);
+        let token_type = match text {
             "and" => TokenType::AND,
             "class" => TokenType::CLASS,
             "else" => TokenType::ELSE,
