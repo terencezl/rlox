@@ -15,77 +15,77 @@ pub trait Visitor<T> {
     fn visit_variable_expr(&mut self, variable: &Variable) -> T;
 }
 
-pub enum Expr {
-    Assign(Assign),
-    Binary(Binary),
-    Call(Call),
-    Get(Get),
-    Grouping(Grouping),
-    Literal(Literal),
-    Logical(Logical),
-    Set(Set),
-    Super(Super),
-    This(This),
-    Unary(Unary),
-    Variable(Variable),
+pub enum Expr<'a> {
+    Assign(Assign<'a>),
+    Binary(Binary<'a>),
+    Call(Call<'a>),
+    Get(Get<'a>),
+    Grouping(Grouping<'a>),
+    Literal(Literal<'a>),
+    Logical(Logical<'a>),
+    Set(Set<'a>),
+    Super(Super<'a>),
+    This(This<'a>),
+    Unary(Unary<'a>),
+    Variable(Variable<'a>),
 }
 
-pub struct Assign {
-    pub name: Token,
-    pub value: Box<Expr>,
+pub struct Assign<'a> {
+    pub name: Token<'a>,
+    pub value: Box<Expr<'a>>,
 }
 
-pub struct Binary {
-    pub left: Box<Expr>,
-    pub operator: Token,
-    pub right: Box<Expr>,
+pub struct Binary<'a> {
+    pub left: Box<Expr<'a>>,
+    pub operator: Token<'a>,
+    pub right: Box<Expr<'a>>,
 }
 
-pub struct Call {
-    pub callee: Box<Expr>,
-    pub paren: Token,
-    pub arguments: Vec<Box<Expr>>,
+pub struct Call<'a> {
+    pub callee: Box<Expr<'a>>,
+    pub paren: Token<'a>,
+    pub arguments: Vec<Box<Expr<'a>>>,
 }
 
-pub struct Get {
-    pub object: Box<Expr>,
-    pub name: Token,
+pub struct Get<'a> {
+    pub object: Box<Expr<'a>>,
+    pub name: Token<'a>,
 }
 
-pub struct Grouping {
-    pub expression: Box<Expr>,
+pub struct Grouping<'a> {
+    pub expression: Box<Expr<'a>>,
 }
 
-pub struct Literal {
-    pub value: token::Literal,
+pub struct Literal<'a> {
+    pub value: token::Literal<'a>,
 }
 
-pub struct Logical {
-    pub left: Box<Expr>,
-    pub operator: Token,
-    pub right: Box<Expr>,
+pub struct Logical<'a> {
+    pub left: Box<Expr<'a>>,
+    pub operator: Token<'a>,
+    pub right: Box<Expr<'a>>,
 }
 
-pub struct Set {
-    pub object: Box<Expr>,
-    pub name: Token,
-    pub value: Box<Expr>,
+pub struct Set<'a> {
+    pub object: Box<Expr<'a>>,
+    pub name: Token<'a>,
+    pub value: Box<Expr<'a>>,
 }
 
-pub struct Super {
-    pub keyword: Token,
-    pub method: Token,
+pub struct Super<'a> {
+    pub keyword: Token<'a>,
+    pub method: Token<'a>,
 }
 
-pub struct This {
-    pub keyword: Token,
+pub struct This<'a> {
+    pub keyword: Token<'a>,
 }
 
-pub struct Unary {
-    pub operator: Token,
-    pub right: Box<Expr>,
+pub struct Unary<'a> {
+    pub operator: Token<'a>,
+    pub right: Box<Expr<'a>>,
 }
 
-pub struct Variable {
-    pub name: Token,
+pub struct Variable<'a> {
+    pub name: Token<'a>,
 }

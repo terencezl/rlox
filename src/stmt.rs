@@ -1,5 +1,5 @@
-use crate::token::Token;
 use crate::expr::{self, Expr};
+use crate::token::Token;
 
 pub trait Visitor<T> {
     fn visit_block_stmt(&mut self, block: &Block) -> T;
@@ -13,60 +13,59 @@ pub trait Visitor<T> {
     fn visit_while_stmt(&mut self, while_: &While) -> T;
 }
 
-pub enum Stmt {
-    Block(Block),
-    Class(Class),
-    Expression(Expression),
-    Function(Function),
-    If(If),
-    Print(Print),
-    Return(Return),
-    Var(Var),
-    While(While),
+pub enum Stmt<'a> {
+    Block(Block<'a>),
+    Class(Class<'a>),
+    Expression(Expression<'a>),
+    Function(Function<'a>),
+    If(If<'a>),
+    Print(Print<'a>),
+    Return(Return<'a>),
+    Var(Var<'a>),
+    While(While<'a>),
 }
 
-
-pub struct Block {
-    pub statements: Vec<Stmt>,
+pub struct Block<'a> {
+    pub statements: Vec<Stmt<'a>>,
 }
 
-pub struct Class {
-    pub name: Token,
-    pub super_class: expr::Variable,
-    pub methods: Vec<Function>,
+pub struct Class<'a> {
+    pub name: Token<'a>,
+    pub super_class: expr::Variable<'a>,
+    pub methods: Vec<Function<'a>>,
 }
 
-pub struct Expression {
-    pub expression: Expr,
+pub struct Expression<'a> {
+    pub expression: Expr<'a>,
 }
 
-pub struct Function {
-    pub name: Token,
-    pub params: Vec<Token>,
-    pub body: Vec<Stmt>,
+pub struct Function<'a> {
+    pub name: Token<'a>,
+    pub params: Vec<Token<'a>>,
+    pub body: Vec<Stmt<'a>>,
 }
 
-pub struct If {
-    pub condition: Expr,
-    pub then_branch: Box<Stmt>,
-    pub else_branch: Option<Box<Stmt>>,
+pub struct If<'a> {
+    pub condition: Expr<'a>,
+    pub then_branch: Box<Stmt<'a>>,
+    pub else_branch: Option<Box<Stmt<'a>>>,
 }
 
-pub struct Print {
-    pub expression: Expr,
+pub struct Print<'a> {
+    pub expression: Expr<'a>,
 }
 
-pub struct Return {
-    pub keyword: Token,
-    pub value: Option<Expr>,
+pub struct Return<'a> {
+    pub keyword: Token<'a>,
+    pub value: Option<Expr<'a>>,
 }
 
-pub struct Var {
-    pub name: Token,
-    pub initializer: Option<Expr>,
+pub struct Var<'a> {
+    pub name: Token<'a>,
+    pub initializer: Option<Expr<'a>>,
 }
 
-pub struct While {
-    pub condition: Expr,
-    pub body: Box<Stmt>,
+pub struct While<'a> {
+    pub condition: Expr<'a>,
+    pub body: Box<Stmt<'a>>,
 }

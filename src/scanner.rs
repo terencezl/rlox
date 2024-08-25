@@ -1,11 +1,12 @@
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType;
+use crate::utils::concat_contiguous_strs;
 use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Scanner<'a> {
     source: Vec<&'a str>,
-    tokens: Vec<Token>,
+    tokens: Vec<Token<'a>>,
     start: usize,
     current: usize,
     line: usize,
@@ -22,13 +23,13 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan_tokens(mut self) -> Result<Vec<Token>> {
+    pub fn scan_tokens(mut self) -> Result<Vec<Token<'a>>> {
         while let Some(_) = self.scan_token() {
             self.start = self.current;
         }
 
         self.tokens
-            .push(Token::new(TokenType::EOF, "".to_string(), None, self.line));
+            .push(Token::new(TokenType::EOF, "", None, self.line));
         Ok(self.tokens)
     }
 
@@ -133,10 +134,14 @@ impl<'a> Scanner<'a> {
         self.add_token_with_literal(r#type, None);
     }
 
-    fn add_token_with_literal(&mut self, r#type: TokenType, literal: Option<Literal>) {
-        let text = self.source[self.start..self.current].concat();
-        self.tokens
-            .push(Token::new(r#type, text, literal, self.line));
+    fn add_token_with_literal(&mut self, r#type: TokenType, literal: Option<Literal<'a>>) {
+        let text = &self.source[self.start..self.current];
+        self.tokens.push(Token::new(
+            r#type,
+            concat_contiguous_strs(text).unwrap(),
+            literal,
+            self.line,
+        ));
     }
 
     fn string(&mut self) -> Option<()> {
@@ -160,7 +165,9 @@ impl<'a> Scanner<'a> {
         // will never be None
         self.advance();
 
-        let literal = Literal::String(self.source[self.start + 1..self.current - 1].concat());
+        let literal = Literal::String(
+            concat_contiguous_strs(&self.source[self.start + 1..self.current - 1]).unwrap(),
+        );
         self.add_token_with_literal(TokenType::STRING, Some(literal));
         Some(())
     }
