@@ -24,9 +24,7 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn scan_tokens(mut self) -> Result<Vec<Token<'a>>> {
-        while let Some(_) = self.scan_token() {
-            self.start = self.current;
-        }
+        while let Some(_) = self.scan_token() {}
 
         self.tokens
             .push(Token::new(TokenType::EOF, "", None, self.line));
@@ -35,6 +33,9 @@ impl<'a> Scanner<'a> {
 
     fn scan_token(&mut self) -> Option<()> {
         let line = self.line;
+        self.advance_while(|c| c == " " || c == "\t" || c == "\r" || c == "\n");
+
+        self.start = self.current;
         let c = self.advance()?;
         match c {
             "(" => self.add_token(TokenType::LEFT_PAREN),
@@ -96,8 +97,6 @@ impl<'a> Scanner<'a> {
                     self.add_token(TokenType::SLASH);
                 }
             }
-            " " | "\r" | "\t" => {}
-            "\n" => self.line += 1,
             "\"" => {
                 self.string()?;
             }
@@ -115,29 +114,28 @@ impl<'a> Scanner<'a> {
     }
 
     fn peek(&self) -> Option<&str> {
-        let c = self.source.get(self.current)?;
-        Some(c)
+        self.source.get(self.current).map(|&c| c)
     }
 
     fn advance(&mut self) -> Option<&str> {
-        let c = self.source.get(self.current)?;
+        let &c = self.source.get(self.current)?;
+        if c == "\n" {
+            self.line += 1;
+        }
+
         self.current += 1;
         Some(c)
     }
 
     fn advance_while(&mut self, predicate: fn(&str) -> bool) {
-        while let Some(c) = self.peek() {
-            if !predicate(c) {
-                break;
-            }
+        while self.peek().is_some_and(predicate) {
             // will never be None
             self.advance();
         }
     }
 
     fn peek_next(&self) -> Option<&str> {
-        let c = self.source.get(self.current + 1)?;
-        Some(c)
+        self.source.get(self.current + 1).map(|&c| c)
     }
 
     fn add_token(&mut self, r#type: TokenType) {
@@ -154,16 +152,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn string(&mut self) -> Option<()> {
-        while let Some(c) = self.peek() {
-            if c == "\"" {
-                break;
-            }
-            if c == "\n" {
-                self.line += 1;
-            }
-            // will never be None
-            self.advance();
-        }
+        self.advance_while(|c| c != "\"");
 
         if self.peek() == None {
             error(self.line, "Unterminated string.");
@@ -192,9 +181,6 @@ impl<'a> Scanner<'a> {
             // having self.peek_next() inside the loop ensures missing closing "/" is caught as error
             if c == "*" && self.peek_next() == Some("/") {
                 break;
-            }
-            if c == "\n" {
-                self.line += 1;
             }
             // will never be None
             self.advance();
