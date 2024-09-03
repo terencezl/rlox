@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::expr::Expr;
 use crate::token::Token;
 use crate::token_type::{Literal, TokenType};
@@ -8,26 +5,23 @@ use anyhow::Result;
 
 pub struct Parser<'a> {
     tokens: &'a [Token<'a>],
-    current: Rc<RefCell<usize>>,
+    current: usize,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: &'a [Token<'a>]) -> Self {
-        Self {
-            tokens,
-            current: Rc::new(RefCell::new(0)),
-        }
+        Self { tokens, current: 0 }
     }
 
-    pub fn parse(self) -> Result<Expr<'a>> {
+    pub fn parse(mut self) -> Result<Expr<'a>> {
         self.expression()
     }
 
-    fn expression(&self) -> Result<Expr<'a>> {
+    fn expression(&mut self) -> Result<Expr<'a>> {
         self.equality()
     }
 
-    fn equality(&self) -> Result<Expr<'a>> {
+    fn equality(&mut self) -> Result<Expr<'a>> {
         let mut expr = self.comparison()?;
         while let Some(t) = self
             .peek()
@@ -45,7 +39,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn comparison(&self) -> Result<Expr<'a>> {
+    fn comparison(&mut self) -> Result<Expr<'a>> {
         let mut expr = self.term()?;
         while let Some(t) = self.peek().filter(|t| {
             matches!(
@@ -68,7 +62,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn term(&self) -> Result<Expr<'a>> {
+    fn term(&mut self) -> Result<Expr<'a>> {
         let mut expr = self.factor()?;
         while let Some(t) = self
             .peek()
@@ -86,7 +80,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn factor(&self) -> Result<Expr<'a>> {
+    fn factor(&mut self) -> Result<Expr<'a>> {
         let mut expr = self.unary()?;
         while let Some(t) = self
             .peek()
@@ -104,7 +98,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn unary(&self) -> Result<Expr<'a>> {
+    fn unary(&mut self) -> Result<Expr<'a>> {
         if let Some(t) = self
             .peek()
             .filter(|t| matches!(t.typ, TokenType::BANG | TokenType::MINUS))
@@ -119,7 +113,7 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
-    fn primary(&self) -> Result<Expr<'a>> {
+    fn primary(&mut self) -> Result<Expr<'a>> {
         if let Some(t) = self.peek() {
             match t.typ {
                 TokenType::FALSE => {
@@ -162,10 +156,14 @@ impl<'a> Parser<'a> {
                                 expression: Box::new(expr),
                             })
                         } else {
-                            Err(anyhow::anyhow!("Expected ')' after grouping expression but got {t}!"))
+                            Err(anyhow::anyhow!(
+                                "Expected ')' after grouping expression but got {t}!"
+                            ))
                         }
                     } else {
-                        Err(anyhow::anyhow!("Expected ')' after grouping expression but no token left!"))
+                        Err(anyhow::anyhow!(
+                            "Expected ')' after grouping expression but no token left!"
+                        ))
                     }
                 }
                 _ => Err(anyhow::anyhow!("Token not a literal: {t}!")),
@@ -176,16 +174,16 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> Option<&'a Token<'a>> {
-        let t = self.tokens.get(*self.current.borrow());
+        let t = self.tokens.get(self.current);
         if t.is_some_and(|t| matches!(t.typ, TokenType::EOF)) {
             return None;
         }
         t
     }
 
-    fn advance(&self) -> Option<&'a Token<'a>> {
-        let c = self.tokens.get(*self.current.borrow());
-        *self.current.borrow_mut() += 1;
+    fn advance(&mut self) -> Option<&'a Token<'a>> {
+        let c = self.tokens.get(self.current);
+        self.current += 1;
         c
     }
 }
