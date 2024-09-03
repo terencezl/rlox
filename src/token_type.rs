@@ -1,6 +1,6 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
-pub enum TokenType {
+pub enum TokenType<'a> {
     // Single-character tokens.
     LEFT_PAREN,
     RIGHT_PAREN,
@@ -26,8 +26,8 @@ pub enum TokenType {
 
     // Literals.
     IDENTIFIER,
-    STRING,
-    NUMBER,
+    STRING(&'a str),
+    NUMBER(f64),
 
     // Keywords.
     AND,
@@ -48,4 +48,37 @@ pub enum TokenType {
     WHILE,
 
     EOF,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Literal<'a> {
+    String(&'a str),
+    Number(f64),
+    True,
+    False,
+    Nil,
+}
+
+impl<'a> From<Literal<'a>> for TokenType<'a> {
+    fn from(literal: Literal<'a>) -> Self {
+        match literal {
+            Literal::String(s) => TokenType::STRING(s),
+            Literal::Number(l) => TokenType::NUMBER(l),
+            Literal::True => TokenType::TRUE,
+            Literal::False => TokenType::FALSE,
+            Literal::Nil => TokenType::NIL,
+        }
+    }
+}
+
+impl<'a> std::fmt::Display for Literal<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Literal::String(s) => write!(f, "{}", s),
+            Literal::Number(n) => write!(f, "{}", n),
+            Literal::True => write!(f, "true"),
+            Literal::False => write!(f, "false"),
+            Literal::Nil => write!(f, "nil"),
+        }
+    }
 }

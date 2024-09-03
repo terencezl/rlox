@@ -1,91 +1,107 @@
-use crate::token::{self, Token};
+use crate::token::Token;
+use crate::token_type::Literal;
 
-pub trait Visitor<T> {
-    fn visit_assign_expr(&mut self, assign: &Assign) -> T;
-    fn visit_binary_expr(&mut self, binary: &Binary) -> T;
-    fn visit_call_expr(&mut self, call: &Call) -> T;
-    fn visit_get_expr(&mut self, get: &Get) -> T;
-    fn visit_grouping_expr(&mut self, grouping: &Grouping) -> T;
-    fn visit_literal_expr(&mut self, literal: &Literal) -> T;
-    fn visit_logical_expr(&mut self, logical: &Logical) -> T;
-    fn visit_set_expr(&mut self, set: &Set) -> T;
-    fn visit_super_expr(&mut self, super_: &Super) -> T;
-    fn visit_this_expr(&mut self, this: &This) -> T;
-    fn visit_unary_expr(&mut self, unary: &Unary) -> T;
-    fn visit_variable_expr(&mut self, variable: &Variable) -> T;
-}
-
+#[derive(Debug, Clone)]
 pub enum Expr<'a> {
-    Assign(Assign<'a>),
-    Binary(Binary<'a>),
-    Call(Call<'a>),
-    Get(Get<'a>),
-    Grouping(Grouping<'a>),
-    Literal(Literal<'a>),
-    Logical(Logical<'a>),
-    Set(Set<'a>),
-    Super(Super<'a>),
-    This(This<'a>),
-    Unary(Unary<'a>),
-    Variable(Variable<'a>),
+    Assign {
+        name: &'a Token<'a>,
+        value: Box<Expr<'a>>,
+    },
+    Binary {
+        left: Box<Expr<'a>>,
+        operator: &'a Token<'a>,
+        right: Box<Expr<'a>>,
+    },
+    Call {
+        callee: Box<Expr<'a>>,
+        paren: &'a Token<'a>,
+        arguments: Vec<Expr<'a>>,
+    },
+    Get {
+        object: Box<Expr<'a>>,
+        name: &'a Token<'a>,
+    },
+    Grouping {
+        expression: Box<Expr<'a>>,
+    },
+    Literal {
+        value: Literal<'a>,
+    },
+    Logical {
+        left: Box<Expr<'a>>,
+        operator: &'a Token<'a>,
+        right: Box<Expr<'a>>,
+    },
+    Set {
+        object: Box<Expr<'a>>,
+        name: &'a Token<'a>,
+        value: Box<Expr<'a>>,
+    },
+    Super {
+        keyword: &'a Token<'a>,
+        method: &'a Token<'a>,
+    },
+    This {
+        keyword: &'a Token<'a>,
+    },
+    Unary {
+        operator: &'a Token<'a>,
+        right: Box<Expr<'a>>,
+    },
+    Variable {
+        name: &'a Token<'a>,
+    },
 }
 
-pub struct Assign<'a> {
-    pub name: Token<'a>,
-    pub value: Box<Expr<'a>>,
+impl<'a> std::fmt::Display for Expr<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Expr::Assign { name, value } => write!(f, "{} = {}", name.lexeme, value),
+            Expr::Binary {
+                left,
+                operator,
+                right,
+            } => write!(f, "({} {} {})", left, operator.lexeme, right),
+            Expr::Call {
+                callee,
+                paren: _,
+                arguments,
+            } => {
+                write!(f, "{}(", callee)?;
+                for arg in arguments {
+                    write!(f, " {}", arg)?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+            Expr::Get { object, name } => write!(f, "({}).{}", object, name),
+            Expr::Grouping { expression } => write!(f, "({})", expression),
+            Expr::Literal { value } => write!(f, "{}", value),
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => write!(f, "({} {} {})", left, operator.lexeme, right),
+            Expr::Set {
+                object,
+                name,
+                value,
+            } => write!(f, "({}).{} = {}", object, name.lexeme, value),
+            Expr::Super { keyword: _, method } => write!(f, "super.{}", method.lexeme),
+            Expr::This { keyword: _ } => write!(f, "this"),
+            Expr::Unary { operator, right } => write!(f, "({}{})", operator.lexeme, right),
+            Expr::Variable { name } => write!(f, "{}", name),
+        }
+    }
 }
 
-pub struct Binary<'a> {
-    pub left: Box<Expr<'a>>,
-    pub operator: Token<'a>,
-    pub right: Box<Expr<'a>>,
-}
-
-pub struct Call<'a> {
-    pub callee: Box<Expr<'a>>,
-    pub paren: Token<'a>,
-    pub arguments: Vec<Box<Expr<'a>>>,
-}
-
-pub struct Get<'a> {
-    pub object: Box<Expr<'a>>,
-    pub name: Token<'a>,
-}
-
-pub struct Grouping<'a> {
-    pub expression: Box<Expr<'a>>,
-}
-
-pub struct Literal<'a> {
-    pub value: token::Literal<'a>,
-}
-
-pub struct Logical<'a> {
-    pub left: Box<Expr<'a>>,
-    pub operator: Token<'a>,
-    pub right: Box<Expr<'a>>,
-}
-
-pub struct Set<'a> {
-    pub object: Box<Expr<'a>>,
-    pub name: Token<'a>,
-    pub value: Box<Expr<'a>>,
-}
-
-pub struct Super<'a> {
-    pub keyword: Token<'a>,
-    pub method: Token<'a>,
-}
-
-pub struct This<'a> {
-    pub keyword: Token<'a>,
-}
-
-pub struct Unary<'a> {
-    pub operator: Token<'a>,
-    pub right: Box<Expr<'a>>,
-}
-
+#[derive(Debug, Clone)]
 pub struct Variable<'a> {
-    pub name: Token<'a>,
+    pub name: &'a Token<'a>,
+}
+
+impl<'a> std::fmt::Display for Variable<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name.lexeme)
+    }
 }

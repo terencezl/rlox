@@ -1,7 +1,6 @@
-use crate::token::{Literal, Token};
+use crate::token::Token;
 use crate::token_type::TokenType;
 use crate::utils::take_slice;
-use anyhow::Result;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Scanner<'a> {
@@ -23,12 +22,11 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan_tokens(mut self) -> Result<Vec<Token<'a>>> {
+    pub fn scan_tokens(mut self) -> Vec<Token<'a>> {
         while let Some(_) = self.scan_token() {}
 
+        self.tokens.push(Token::new(TokenType::EOF, "", self.line));
         self.tokens
-            .push(Token::new(TokenType::EOF, "", None, self.line));
-        Ok(self.tokens)
     }
 
     fn scan_token(&mut self) -> Option<()> {
@@ -49,9 +47,7 @@ impl<'a> Scanner<'a> {
             ";" => self.add_token(TokenType::SEMICOLON),
             "*" => self.add_token(TokenType::STAR),
             "!" => {
-                let token_type = if self.peek() == Some("=") {
-                    // will never be None
-                    self.advance();
+                let token_type = if self.advance_if_match("=") {
                     TokenType::BANG_EQUAL
                 } else {
                     TokenType::BANG
@@ -59,9 +55,7 @@ impl<'a> Scanner<'a> {
                 self.add_token(token_type);
             }
             "=" => {
-                let token_type = if self.peek() == Some("=") {
-                    // will never be None
-                    self.advance();
+                let token_type = if self.advance_if_match("=") {
                     TokenType::EQUAL_EQUAL
                 } else {
                     TokenType::EQUAL
@@ -69,9 +63,7 @@ impl<'a> Scanner<'a> {
                 self.add_token(token_type);
             }
             "<" => {
-                let token_type = if self.peek() == Some("=") {
-                    // will never be None
-                    self.advance();
+                let token_type = if self.advance_if_match("=") {
                     TokenType::LESS_EQUAL
                 } else {
                     TokenType::LESS
@@ -79,9 +71,7 @@ impl<'a> Scanner<'a> {
                 self.add_token(token_type);
             }
             ">" => {
-                let token_type = if self.peek() == Some("=") {
-                    // will never be None
-                    self.advance();
+                let token_type = if self.advance_if_match("=") {
                     TokenType::GREATER_EQUAL
                 } else {
                     TokenType::GREATER
@@ -89,9 +79,9 @@ impl<'a> Scanner<'a> {
                 self.add_token(token_type);
             }
             "/" => {
-                if self.peek() == Some("/") {
+                if self.advance_if_match("/") {
                     self.slash_slash_comment();
-                } else if self.peek() == Some("*") {
+                } else if self.advance_if_match("*") {
                     self.slash_star_comment()?;
                 } else {
                     self.add_token(TokenType::SLASH);
@@ -117,6 +107,10 @@ impl<'a> Scanner<'a> {
         self.source.get(self.current).map(|&c| c)
     }
 
+    fn peek_next(&self) -> Option<&str> {
+        self.source.get(self.current + 1).map(|&c| c)
+    }
+
     fn advance(&mut self) -> Option<&str> {
         let &c = self.source.get(self.current)?;
         if c == "\n" {
@@ -127,6 +121,16 @@ impl<'a> Scanner<'a> {
         Some(c)
     }
 
+    fn advance_if_match(&mut self, expected: &str) -> bool {
+        self.peek()
+            .is_some_and(|c| c == expected)
+            .then(|| {
+                // will never be None
+                self.advance()
+            })
+            .is_some()
+    }
+
     fn advance_while(&mut self, predicate: fn(&str) -> bool) {
         while self.peek().is_some_and(predicate) {
             // will never be None
@@ -134,19 +138,10 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn peek_next(&self) -> Option<&str> {
-        self.source.get(self.current + 1).map(|&c| c)
-    }
-
-    fn add_token(&mut self, r#type: TokenType) {
-        self.add_token_with_literal(r#type, None);
-    }
-
-    fn add_token_with_literal(&mut self, r#type: TokenType, literal: Option<Literal<'a>>) {
+    fn add_token(&mut self, typ: TokenType<'a>) {
         self.tokens.push(Token::new(
-            r#type,
+            typ,
             take_slice(&self.source, self.start, self.current),
-            literal,
             self.line,
         ));
     }
@@ -163,8 +158,8 @@ impl<'a> Scanner<'a> {
         // will never be None
         self.advance();
 
-        let literal = Literal::String(take_slice(&self.source, self.start + 1, self.current - 1));
-        self.add_token_with_literal(TokenType::STRING, Some(literal));
+        let literal = take_slice(&self.source, self.start + 1, self.current - 1);
+        self.add_token(TokenType::STRING(literal));
         Some(())
     }
 
@@ -173,10 +168,6 @@ impl<'a> Scanner<'a> {
     }
 
     fn slash_star_comment(&mut self) -> Option<()> {
-        // consume the "*" of the opening "/*"
-        // will never be None
-        self.advance();
-
         while let Some(c) = self.peek() {
             // having self.peek_next() inside the loop ensures missing closing "/" is caught as error
             if c == "*" && self.peek_next() == Some("/") {
@@ -212,12 +203,10 @@ impl<'a> Scanner<'a> {
             self.advance_while(is_digit);
         }
 
-        let literal = Literal::Number(
-            take_slice(&self.source, self.start, self.current)
-                .parse::<f64>()
-                .unwrap(),
-        );
-        self.add_token_with_literal(TokenType::NUMBER, Some(literal));
+        let literal = take_slice(&self.source, self.start, self.current)
+            .parse::<f64>()
+            .unwrap();
+        self.add_token(TokenType::NUMBER(literal));
     }
 
     fn identifier(&mut self) {
