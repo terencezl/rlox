@@ -50,7 +50,7 @@ pub enum TokenType<'a> {
     EOF,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal<'a> {
     String(&'a str),
     Number(f64),

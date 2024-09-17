@@ -237,11 +237,7 @@ impl<'a> Scanner<'a> {
 }
 
 fn error(line: usize, message: &str) {
-    report(line, "", message);
-}
-
-fn report(line: usize, location: &str, message: &str) {
-    eprintln!("[line {}] Error {}: {}", line, location, message);
+    eprintln!("[line {}] ScannerError: {}", line, message);
 }
 
 fn is_digit(c: &str) -> bool {
